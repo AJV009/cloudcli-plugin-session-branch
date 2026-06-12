@@ -31,6 +31,7 @@ import {
   restoreBackup,
   cleanupOldBackups,
 } from './lib/backup.js';
+import { loadConfig, saveConfig } from './lib/config.js';
 
 const MAX_BODY_BYTES = 1024 * 1024;
 
@@ -230,6 +231,10 @@ const server = http.createServer(async (req, res) => {
         return send(200, handleBackups(url.searchParams));
       case 'POST /restore':
         return send(200, handleRestore(await readBody(req)));
+      case 'GET /config':
+        return send(200, { ok: true, config: loadConfig() });
+      case 'POST /config':
+        return send(200, { ok: true, config: saveConfig(await readBody(req)) });
       default:
         return send(404, { ok: false, error: `Unknown route: ${route}` });
     }

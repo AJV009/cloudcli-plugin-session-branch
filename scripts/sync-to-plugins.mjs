@@ -8,9 +8,16 @@ import { fileURLToPath } from 'node:url';
 const src = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dest = path.join(os.homedir(), '.claude-code-ui', 'plugins', 'session-branch');
 
-fs.rmSync(dest, { recursive: true, force: true });
+// The dir can be locked while the host has the plugin subprocess running
+// (its cwd lives here on Windows) — fall back to overwrite-copy in that case.
+try {
+  fs.rmSync(dest, { recursive: true, force: true });
+} catch {
+  console.log('目标目录被占用，跳过清空，使用覆盖复制（不会清理已删除的文件）');
+}
 fs.cpSync(src, dest, {
   recursive: true,
+  force: true,
   filter: (p) => !p.includes('.git') && !p.includes('node_modules'),
 });
 console.log(`synced -> ${dest}`);

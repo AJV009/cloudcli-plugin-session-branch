@@ -2,6 +2,7 @@
 // Contract: export mount(container, api) / unmount(container).
 
 const STYLE_ID = 'session-branch-style';
+const DEFAULT_VISIBLE_COUNT = 10;
 
 const CSS = `
 .sbr-root { height: 100%; overflow: auto; font-size: 13px; line-height: 1.5;
@@ -54,6 +55,10 @@ const CSS = `
 .sbr-section summary { cursor: pointer; color: var(--sbr-muted); font-size: 12px; }
 .sbr-backup { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 12px;
   border-bottom: 1px solid var(--sbr-border); }
+.sbr-more-wrap { text-align: center; margin-bottom: 6px; }
+.sbr-field { display: flex; align-items: center; gap: 8px; margin: 12px 0; font-size: 12px; }
+.sbr-input { border: 1px solid var(--sbr-border); background: var(--sbr-card); color: var(--sbr-fg);
+  border-radius: 6px; padding: 4px 8px; font-size: 12px; width: 90px; }
 .sbr-spin { color: var(--sbr-muted); padding: 24px 0; text-align: center; }
 `;
 
@@ -83,6 +88,12 @@ async function rpc(state, method, path, body) {
   return result;
 }
 
+function scrollToBottom(state) {
+  requestAnimationFrame(() => {
+    state.root.scrollTop = state.root.scrollHeight;
+  });
+}
+
 async function load(state) {
   const session = state.api.context.session;
   const project = state.api.context.project;
@@ -96,14 +107,23 @@ async function load(state) {
   state.loading = true;
   render(state);
   try {
+    if (!state.config) {
+      try {
+        state.config = (await rpc(state, 'GET', '/config')).config;
+      } catch {
+        state.config = { defaultVisibleCount: DEFAULT_VISIBLE_COUNT };
+      }
+    }
     const qs = `sessionId=${encodeURIComponent(session.id)}&projectPath=${encodeURIComponent(project ? project.path : '')}`;
     state.data = await rpc(state, 'GET', `/messages?${qs}`);
     state.backups = (await rpc(state, 'GET', `/backups?sessionId=${encodeURIComponent(session.id)}`)).backups;
+    state.visibleCount = state.config.defaultVisibleCount || DEFAULT_VISIBLE_COUNT;
   } catch (err) {
     state.error = err.message || String(err);
   } finally {
     state.loading = false;
     render(state);
+    scrollToBottom(state);
   }
 }
 
@@ -241,6 +261,58 @@ function renderConfirm(state) {
   return overlay;
 }
 
+function renderSettings(state) {
+  const overlay = el('div', 'sbr-overlay');
+  const dialog = el('div', 'sbr-dialog');
+  dialog.appendChild(el('h3', '', '插件设置'));
+
+  const field = el('label', 'sbr-field');
+  field.appendChild(document.createTextNode('打开时默认显示最近消息条数'));
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.min = '1';
+  input.max = '1000';
+  input.className = 'sbr-input';
+  input.value = String(state.config ? state.config.defaultVisibleCount : DEFAULT_VISIBLE_COUNT);
+  field.appendChild(input);
+  dialog.appendChild(field);
+  dialog.appendChild(el('p', '', '更早的消息可以随时通过列表顶部的「显示更早的消息」按钮展开。'));
+
+  const errorBox = el('p', '');
+  errorBox.style.color = 'var(--sbr-danger)';
+  dialog.appendChild(errorBox);
+
+  const btns = el('div', 'sbr-dialog-btns');
+  const cancel = el('button', 'sbr-btn', '取消');
+  cancel.onclick = () => { state.settingsOpen = false; render(state); };
+  const save = el('button', 'sbr-btn sbr-btn-primary', '保存');
+  save.onclick = async () => {
+    save.disabled = true;
+    try {
+      const result = await rpc(state, 'POST', '/config', { defaultVisibleCount: Number(input.value) });
+      state.config = result.config;
+      state.visibleCount = state.config.defaultVisibleCount;
+      state.settingsOpen = false;
+      render(state);
+      scrollToBottom(state);
+    } catch (err) {
+      errorBox.textContent = err.message || String(err);
+      save.disabled = false;
+    }
+  };
+  btns.append(cancel, save);
+  dialog.appendChild(btns);
+
+  overlay.appendChild(dialog);
+  overlay.onclick = (event) => {
+    if (event.target === overlay) {
+      state.settingsOpen = false;
+      render(state);
+    }
+  };
+  return overlay;
+}
+
 function render(state) {
   const root = state.root;
   root.className = `sbr-root ${state.api.context.theme === 'dark' ? 'sbr-dark' : 'sbr-light'}`;
@@ -256,6 +328,9 @@ function render(state) {
   const refresh = el('button', 'sbr-btn', '刷新');
   refresh.onclick = () => load(state);
   head.appendChild(refresh);
+  const settingsBtn = el('button', 'sbr-btn', '⚙ 设置');
+  settingsBtn.onclick = () => { state.settingsOpen = true; render(state); };
+  head.appendChild(settingsBtn);
   root.appendChild(head);
 
   if (state.error) {
@@ -286,8 +361,28 @@ function render(state) {
     root.appendChild(el('div', 'sbr-banner sbr-banner-warn', '⚠ 该会话一分钟内有写入，可能正在运行任务。运行中操作有风险。'));
   }
 
+  const allItems = state.data.items;
+  const visibleCount = state.visibleCount || DEFAULT_VISIBLE_COUNT;
+  const startIndex = Math.max(0, allItems.length - visibleCount);
+
   const list = el('div', 'sbr-list');
-  for (const item of state.data.items) {
+  if (startIndex > 0) {
+    const moreWrap = el('div', 'sbr-more-wrap');
+    const moreBtn = el('button', 'sbr-btn', `显示更早的 ${startIndex} 条消息`);
+    moreBtn.onclick = () => {
+      const prevHeight = state.root.scrollHeight;
+      const prevTop = state.root.scrollTop;
+      state.visibleCount = allItems.length;
+      render(state);
+      // keep the viewport anchored on what the user was looking at
+      requestAnimationFrame(() => {
+        state.root.scrollTop = state.root.scrollHeight - prevHeight + prevTop;
+      });
+    };
+    moreWrap.appendChild(moreBtn);
+    list.appendChild(moreWrap);
+  }
+  for (const item of allItems.slice(startIndex)) {
     const card = el('div', `sbr-item${item.role === 'user' && item.isCandidate ? ' sbr-item-user' : ' sbr-item-dim'}`);
     const row = el('div', 'sbr-item-row');
     const roleLabel = item.role === 'user' ? '用户' : item.role === 'assistant' ? '助手' : '工具';
@@ -314,7 +409,6 @@ function render(state) {
     root.appendChild(el('div', 'sbr-empty', '该会话没有可显示的消息。'));
   }
   root.appendChild(list);
-
   if (state.backups && state.backups.length > 0) {
     const section = document.createElement('details');
     section.className = 'sbr-section';
@@ -333,6 +427,9 @@ function render(state) {
 
   if (state.confirm) {
     root.appendChild(renderConfirm(state));
+  }
+  if (state.settingsOpen) {
+    root.appendChild(renderSettings(state));
   }
 }
 
@@ -357,6 +454,9 @@ export function mount(container, api) {
     error: null,
     result: null,
     confirm: null,
+    config: null,
+    visibleCount: DEFAULT_VISIBLE_COUNT,
+    settingsOpen: false,
     unsubscribe: null,
   };
   states.set(container, state);
