@@ -3,7 +3,7 @@
   "displayName": "会话分支",
   "version": "0.1.0",
   "description": "Rewind or fork Claude / Codex sessions at any user message — 在任意用户消息处回退或分支会话",
-  "author": "leimingzhu",
+  "author": "pipipigu",
   "icon": "icon.svg",
   "type": "module",
   "slot": "tab",
