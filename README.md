@@ -1,40 +1,47 @@
-# session-branch — CloudCLI 会话分支与回退插件
+# session-branch — Session Branching & Rewind Plugin for CloudCLI
 
-在任意用户消息处**回退（rewind）**或**分支（fork）** Claude / Codex 会话。
+**English** | [简体中文](./README.zh-CN.md)
 
-- **回退**：说错了一句话？撤回这条消息及之后的全部内容，回到发送前的状态，重新发送即可。原文件自动备份，可一键撤销。
-- **分支**：在某条消息处复制一份完整上下文为新会话，原会话不受影响，可以在分支里问别的事情。
+**Rewind** or **fork** Claude / Codex sessions at any user message.
 
-## 支持范围
+- **Rewind**: said something wrong? Retract that message and everything after it, returning to the state right before it was sent — then just resend. The original file is backed up automatically and can be restored with one click.
+- **Fork**: copy the full context at any message into a new session. The original session is untouched, so you can explore a different direction in the branch.
 
-| Provider | 回退 | 分支 | 说明 |
+## Supported Providers
+
+| Provider | Rewind | Fork | Storage |
 |---|---|---|---|
 | Claude | ✅ | ✅ | `~/.claude/projects/**/<sessionId>.jsonl` |
 | Codex | ✅ | ✅ | `~/.codex/sessions/**/rollout-*.jsonl` |
-| Cursor / OpenCode / Gemini | ❌ | ❌ | 存储格式不支持安全改写 |
+| Cursor / OpenCode / Gemini | ❌ | ❌ | Storage formats are not safe to rewrite |
 
-## 安装
+## Installation
 
-在 CloudCLI 的 Settings → Plugins → Install from Git URL 输入本仓库地址。
+In CloudCLI, go to **Settings → Plugins → Install from Git URL** and enter this repository's URL:
 
-## 使用
+```
+https://github.com/pipipigu/cloudcli-plugin-session-branch
+```
 
-1. 在左侧选中一个 Claude / Codex 会话
-2. 切换到顶部的「会话分支」Tab
-3. 在消息时间线中找到目标用户消息，点「回退到此处」或「从此处分支」
-4. 回退后：切换会话再切回（或刷新页面），重新发送修正后的消息
-5. 分支后：新会话约 10 秒内自动出现在左侧会话列表
+## Usage
 
-## 安全设计
+1. Select a Claude / Codex session in the sidebar
+2. Switch to the **Session Branch** tab at the top
+3. The timeline shows the most recent messages (default 10, configurable via the ⚙ Settings button) and scrolls to the bottom; click "Show earlier messages" to expand
+4. Find the target user message and click **Rewind to here** or **Fork from here**
+5. After a rewind: switch away from the session and back (or refresh the page), then resend your corrected message
+6. After a fork: the new session appears in the sidebar within ~10 seconds
 
-- 所有写操作前全量备份到 `~/.claude-code-ui/plugin-data/session-branch/backups/`，备份保留 30 天，支持一键恢复
-- 永不删除会话文件（回退 = 备份 + 原子重写；分支 = 新建文件）
-- 文件指纹乐观锁：会话在操作期间被写入会被拦截
-- sessionId 白名单校验 + realpath 前缀校验，文件操作仅限 `~/.claude/projects`、`~/.codex/sessions` 与备份目录
-- 会话一分钟内有写入时界面会显示"可能正在运行"警告
+## Safety Design
 
-## 注意事项
+- Every write operation is preceded by a full backup to `~/.claude-code-ui/plugin-data/session-branch/backups/`; backups are kept for 30 days and can be restored with one click
+- Session files are never deleted (rewind = backup + atomic rewrite; fork = new file)
+- Optimistic locking via file fingerprints: operations are blocked if the session is written to concurrently
+- sessionId allowlist validation + realpath containment checks; file operations are restricted to `~/.claude/projects`, `~/.codex/sessions`, and the backup directory
+- A "possibly running" warning is shown when the session was written to within the last minute
 
-- 请在会话**空闲时**操作（没有正在进行的对话）
-- Codex 分支不会复制 `session_index.jsonl` 中的会话名称，新分支会以首条消息显示
-- 回退后已打开的聊天界面不会自动刷新，需要重新进入会话
+## Notes
+
+- Operate on **idle** sessions only (no conversation in progress)
+- Codex forks do not copy the session name from `session_index.jsonl`; the new branch will be titled by its first message
+- An already-open chat view does not refresh automatically after a rewind — re-enter the session
