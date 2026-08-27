@@ -24,7 +24,7 @@ export function saveConfig(partial) {
   if (partial && partial.defaultVisibleCount !== undefined) {
     const n = Number(partial.defaultVisibleCount);
     if (!Number.isInteger(n) || n < 1 || n > 1000) {
-      throw new Error('默认显示条数必须是 1-1000 的整数');
+      throw new Error('The default message count must be an integer between 1 and 1000');
     }
     config.defaultVisibleCount = n;
   }

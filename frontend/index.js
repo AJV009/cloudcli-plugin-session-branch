@@ -83,7 +83,7 @@ function fmtTime(ts) {
 async function rpc(state, method, path, body) {
   const result = await state.api.rpc(method, path, body);
   if (result && result.ok === false) {
-    throw new Error(result.error || '操作失败');
+    throw new Error(result.error || 'Operation failed');
   }
   return result;
 }
@@ -143,7 +143,7 @@ async function doRewind(state, item) {
     state.result = {
       kind: 'rewind',
       backupId: result.backupId,
-      text: `已回退：撤回了 ${result.removedLines} 行记录。请切换到其他会话再切回（或刷新页面），然后重新发送修正后的消息。`,
+      text: `Rewound: removed ${result.removedLines} lines. Switch to another session and back (or reload the page), then re-send your corrected message.`,
     };
     await load(state);
   } catch (err) {
@@ -171,7 +171,7 @@ async function doFork(state, item, mode) {
     state.confirm = null;
     state.result = {
       kind: 'fork',
-      text: `分支已创建（新会话 ${result.newSessionId}）。新会话约 10 秒内出现在左侧会话列表，打开即可继续提问，原会话不受影响。`,
+      text: `Branch created (new session ${result.newSessionId}). It appears in the session list on the left within about 10 seconds — open it to carry on. The original session is unaffected.`,
     };
   } catch (err) {
     state.confirm = null;
@@ -187,7 +187,7 @@ async function doRestore(state, backupId) {
   render(state);
   try {
     await rpc(state, 'POST', '/restore', { backupId });
-    state.result = { kind: 'restore', text: '已从备份恢复会话文件。请切换会话或刷新页面查看。' };
+    state.result = { kind: 'restore', text: 'Session file restored from backup. Switch sessions or reload the page to see it.' };
     await load(state);
   } catch (err) {
     state.error = err.message || String(err);
@@ -206,24 +206,24 @@ function renderConfirm(state) {
   const keptRows = state.data.items.length - removedRows;
 
   if (action === 'rewind') {
-    dialog.appendChild(el('h3', '', '回退到此处'));
-    dialog.appendChild(el('p', '', `将撤回这条消息及之后的全部内容（${removedRows} 条），保留之前的 ${keptRows} 条。原文件会先备份，可随时撤销。`));
+    dialog.appendChild(el('h3', '', 'Rewind to here'));
+    dialog.appendChild(el('p', '', `This removes this message and everything after it (${removedRows} entries), keeping the ${keptRows} before it. The original file is backed up first and can be restored at any time.`));
     const quote = el('div', 'sbr-quote', item.text);
     dialog.appendChild(quote);
     if (state.data.activeRisk) {
-      dialog.appendChild(el('div', 'sbr-banner sbr-banner-warn', '⚠ 该会话一分钟内有写入，可能正在运行任务。请确认没有正在进行的对话再操作。'));
+      dialog.appendChild(el('div', 'sbr-banner sbr-banner-warn', '⚠ This session was written to in the last minute and may be running a task. Make sure no conversation is in progress before continuing.'));
     }
     const btns = el('div', 'sbr-dialog-btns');
-    const cancel = el('button', 'sbr-btn', '取消');
+    const cancel = el('button', 'sbr-btn', 'Cancel');
     cancel.onclick = () => { state.confirm = null; render(state); };
-    const ok = el('button', 'sbr-btn sbr-btn-primary', state.busy ? '处理中…' : '确认回退');
+    const ok = el('button', 'sbr-btn sbr-btn-primary', state.busy ? 'Working…' : 'Confirm rewind');
     ok.disabled = state.busy;
     ok.onclick = () => doRewind(state, item);
     btns.append(cancel, ok);
     dialog.appendChild(btns);
   } else {
-    dialog.appendChild(el('h3', '', '从此处创建分支'));
-    dialog.appendChild(el('p', '', '复制一份完整上下文为新会话，原会话不受影响。选择分支包含的范围：'));
+    dialog.appendChild(el('h3', '', 'Branch from here'));
+    dialog.appendChild(el('p', '', 'Copies the full context into a new session. The original is unaffected. Choose what the branch includes:'));
     const quote = el('div', 'sbr-quote', item.text);
     dialog.appendChild(quote);
 
@@ -238,13 +238,13 @@ function renderConfirm(state) {
       wrap.append(input, document.createTextNode(' ' + label));
       return wrap;
     };
-    dialog.appendChild(mkRadio('after', '包含此消息及其回答（在它之后继续）'));
-    dialog.appendChild(mkRadio('before', '不包含此消息（回到它发送之前的状态）'));
+    dialog.appendChild(mkRadio('after', 'Include this message and its reply (continue after it)'));
+    dialog.appendChild(mkRadio('before', 'Exclude this message (return to the state before it was sent)'));
 
     const btns = el('div', 'sbr-dialog-btns');
-    const cancel = el('button', 'sbr-btn', '取消');
+    const cancel = el('button', 'sbr-btn', 'Cancel');
     cancel.onclick = () => { state.confirm = null; render(state); };
-    const ok = el('button', 'sbr-btn sbr-btn-primary', state.busy ? '处理中…' : '创建分支');
+    const ok = el('button', 'sbr-btn sbr-btn-primary', state.busy ? 'Working…' : 'Create branch');
     ok.disabled = state.busy;
     ok.onclick = () => doFork(state, item, mode);
     btns.append(cancel, ok);
@@ -264,10 +264,10 @@ function renderConfirm(state) {
 function renderSettings(state) {
   const overlay = el('div', 'sbr-overlay');
   const dialog = el('div', 'sbr-dialog');
-  dialog.appendChild(el('h3', '', '插件设置'));
+  dialog.appendChild(el('h3', '', 'Plugin settings'));
 
   const field = el('label', 'sbr-field');
-  field.appendChild(document.createTextNode('打开时默认显示最近消息条数'));
+  field.appendChild(document.createTextNode('Recent messages shown by default'));
   const input = document.createElement('input');
   input.type = 'number';
   input.min = '1';
@@ -276,16 +276,16 @@ function renderSettings(state) {
   input.value = String(state.config ? state.config.defaultVisibleCount : DEFAULT_VISIBLE_COUNT);
   field.appendChild(input);
   dialog.appendChild(field);
-  dialog.appendChild(el('p', '', '更早的消息可以随时通过列表顶部的「显示更早的消息」按钮展开。'));
+  dialog.appendChild(el('p', '', 'Earlier messages can be expanded at any time with the "Show earlier messages" button at the top of the list.'));
 
   const errorBox = el('p', '');
   errorBox.style.color = 'var(--sbr-danger)';
   dialog.appendChild(errorBox);
 
   const btns = el('div', 'sbr-dialog-btns');
-  const cancel = el('button', 'sbr-btn', '取消');
+  const cancel = el('button', 'sbr-btn', 'Cancel');
   cancel.onclick = () => { state.settingsOpen = false; render(state); };
-  const save = el('button', 'sbr-btn sbr-btn-primary', '保存');
+  const save = el('button', 'sbr-btn sbr-btn-primary', 'Save');
   save.onclick = async () => {
     save.disabled = true;
     try {
@@ -321,14 +321,14 @@ function render(state) {
   const session = state.api.context.session;
 
   const head = el('div', 'sbr-head');
-  head.appendChild(el('div', 'sbr-title', '会话分支与回退'));
+  head.appendChild(el('div', 'sbr-title', 'Session Branch & Rewind'));
   if (session && state.data) {
     head.appendChild(el('div', 'sbr-sub', `${session.title || session.id} · ${state.data.provider}`));
   }
-  const refresh = el('button', 'sbr-btn', '刷新');
+  const refresh = el('button', 'sbr-btn', 'Refresh');
   refresh.onclick = () => load(state);
   head.appendChild(refresh);
-  const settingsBtn = el('button', 'sbr-btn', '⚙ 设置');
+  const settingsBtn = el('button', 'sbr-btn', '⚙ Settings');
   settingsBtn.onclick = () => { state.settingsOpen = true; render(state); };
   head.appendChild(settingsBtn);
   root.appendChild(head);
@@ -340,7 +340,7 @@ function render(state) {
     const banner = el('div', 'sbr-banner sbr-banner-ok');
     banner.appendChild(document.createTextNode(state.result.text));
     if (state.result.kind === 'rewind' && state.result.backupId) {
-      const undo = el('button', 'sbr-btn', '撤销回退');
+      const undo = el('button', 'sbr-btn', 'Undo rewind');
       undo.onclick = () => doRestore(state, state.result.backupId);
       banner.appendChild(undo);
     }
@@ -348,17 +348,17 @@ function render(state) {
   }
 
   if (!session) {
-    root.appendChild(el('div', 'sbr-empty', '请先在左侧选择一个会话（仅支持 Claude / Codex 会话）。'));
+    root.appendChild(el('div', 'sbr-empty', 'Select a session on the left first (Claude / Codex sessions only).'));
     return;
   }
   if (state.loading) {
-    root.appendChild(el('div', 'sbr-spin', '加载中…'));
+    root.appendChild(el('div', 'sbr-spin', 'Loading…'));
     return;
   }
   if (!state.data) return;
 
   if (state.data.activeRisk) {
-    root.appendChild(el('div', 'sbr-banner sbr-banner-warn', '⚠ 该会话一分钟内有写入，可能正在运行任务。运行中操作有风险。'));
+    root.appendChild(el('div', 'sbr-banner sbr-banner-warn', '⚠ This session was written to in the last minute and may be running a task. Acting on a running session is risky.'));
   }
 
   const allItems = state.data.items;
@@ -368,7 +368,7 @@ function render(state) {
   const list = el('div', 'sbr-list');
   if (startIndex > 0) {
     const moreWrap = el('div', 'sbr-more-wrap');
-    const moreBtn = el('button', 'sbr-btn', `显示更早的 ${startIndex} 条消息`);
+    const moreBtn = el('button', 'sbr-btn', `Show ${startIndex} earlier messages`);
     moreBtn.onclick = () => {
       const prevHeight = state.root.scrollHeight;
       const prevTop = state.root.scrollTop;
@@ -385,7 +385,7 @@ function render(state) {
   for (const item of allItems.slice(startIndex)) {
     const card = el('div', `sbr-item${item.role === 'user' && item.isCandidate ? ' sbr-item-user' : ' sbr-item-dim'}`);
     const row = el('div', 'sbr-item-row');
-    const roleLabel = item.role === 'user' ? '用户' : item.role === 'assistant' ? '助手' : '工具';
+    const roleLabel = item.role === 'user' ? 'User' : item.role === 'assistant' ? 'Assistant' : 'Tool';
     row.appendChild(el('span', `sbr-role sbr-role-${item.role}`, roleLabel));
     const text = item.role === 'tool'
       ? `${item.text}${item.count > 1 ? ` ×${item.count}` : ''}`
@@ -396,9 +396,9 @@ function render(state) {
 
     if (item.isCandidate) {
       const actions = el('div', 'sbr-actions');
-      const rewindBtn = el('button', 'sbr-btn sbr-btn-danger', '⟲ 回退到此处');
+      const rewindBtn = el('button', 'sbr-btn sbr-btn-danger', '⟲ Rewind to here');
       rewindBtn.onclick = () => { state.confirm = { item, action: 'rewind' }; render(state); };
-      const forkBtn = el('button', 'sbr-btn', '⑂ 从此处分支');
+      const forkBtn = el('button', 'sbr-btn', '⑂ Branch from here');
       forkBtn.onclick = () => { state.confirm = { item, action: 'fork' }; render(state); };
       actions.append(rewindBtn, forkBtn);
       card.appendChild(actions);
@@ -406,18 +406,18 @@ function render(state) {
     list.appendChild(card);
   }
   if (state.data.items.length === 0) {
-    root.appendChild(el('div', 'sbr-empty', '该会话没有可显示的消息。'));
+    root.appendChild(el('div', 'sbr-empty', 'This session has no messages to show.'));
   }
   root.appendChild(list);
   if (state.backups && state.backups.length > 0) {
     const section = document.createElement('details');
     section.className = 'sbr-section';
-    const summary = el('summary', '', `备份记录（${state.backups.length}）`);
+    const summary = el('summary', '', `Backups (${state.backups.length})`);
     section.appendChild(summary);
     for (const backup of state.backups) {
       const row = el('div', 'sbr-backup');
       row.appendChild(el('span', '', `${backup.createdAt || backup.backupId} · ${backup.action || ''}`));
-      const restoreBtn = el('button', 'sbr-btn', '恢复此备份');
+      const restoreBtn = el('button', 'sbr-btn', 'Restore this backup');
       restoreBtn.onclick = () => doRestore(state, backup.backupId);
       row.appendChild(restoreBtn);
       section.appendChild(row);

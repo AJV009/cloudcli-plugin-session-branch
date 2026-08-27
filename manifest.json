@@ -1,8 +1,8 @@
 {
   "name": "session-branch",
-  "displayName": "会话分支",
+  "displayName": "Session Branch",
   "version": "0.1.0",
-  "description": "Rewind or fork Claude / Codex sessions at any user message — 在任意用户消息处回退或分支会话",
+  "description": "Rewind or fork Claude / Codex sessions at any user message",
   "author": "pipipigu",
   "icon": "icon.svg",
   "type": "module",

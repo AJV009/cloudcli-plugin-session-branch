@@ -46,7 +46,7 @@ function loadSession(query) {
   const projectPath = query.get('projectPath') || '';
   const resolved = resolveSession(sessionId, projectPath);
   if (!resolved) {
-    throw new Error(`未找到该会话的存储文件（仅支持 Claude / Codex 会话）: ${sessionId}`);
+    throw new Error(`No stored file found for this session (Claude / Codex sessions only): ${sessionId}`);
   }
   return { sessionId, projectPath, resolved };
 }
@@ -66,7 +66,7 @@ function validateCutIndex(items, cutIndex, { allowTurnEnd = false } = {}) {
     if (item.turnStartIndex === idx) return idx;
     if (allowTurnEnd && item.nextTurnStartIndex === idx) return idx;
   }
-  throw new Error('截断点不是有效的消息边界，请刷新消息列表后重试');
+  throw new Error('The truncation point is not a valid message boundary — refresh the message list and try again');
 }
 
 // ---------------------------------------------------------------- handlers
@@ -98,7 +98,7 @@ function handleRewind(body) {
   const { sessionId, resolved } = loadSession(query);
 
   if (!fingerprintMatches(resolved.filePath, body.fingerprint)) {
-    throw new Error('会话文件已发生变化（可能正在运行），请刷新消息列表后重试');
+    throw new Error('The session file has changed (it may be running) — refresh the message list and try again');
   }
 
   const lines = readLines(resolved.filePath);
@@ -133,7 +133,7 @@ function handleFork(body) {
   const { sessionId, resolved } = loadSession(query);
 
   if (!fingerprintMatches(resolved.filePath, body.fingerprint)) {
-    throw new Error('会话文件已发生变化（可能正在运行），请刷新消息列表后重试');
+    throw new Error('The session file has changed (it may be running) — refresh the message list and try again');
   }
 
   const lines = readLines(resolved.filePath);

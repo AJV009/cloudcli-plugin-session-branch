@@ -13,7 +13,7 @@ const dest = path.join(os.homedir(), '.claude-code-ui', 'plugins', 'session-bran
 try {
   fs.rmSync(dest, { recursive: true, force: true });
 } catch {
-  console.log('目标目录被占用，跳过清空，使用覆盖复制（不会清理已删除的文件）');
+  console.log('Target directory is in use; skipping the wipe and copying over it instead (deleted files will not be cleaned up)');
 }
 fs.cpSync(src, dest, {
   recursive: true,
@@ -21,4 +21,4 @@ fs.cpSync(src, dest, {
   filter: (p) => !p.includes('.git') && !p.includes('node_modules'),
 });
 console.log(`synced -> ${dest}`);
-console.log('前端改动：切出/切回插件 Tab 即生效；后端改动：在 Settings → Plugins 中 disable→enable 重启子进程。');
+console.log('Frontend changes take effect by switching away from the plugin tab and back. Backend changes need a disable/enable in Settings > Plugins to restart the child process.');
